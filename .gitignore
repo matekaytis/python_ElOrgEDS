@@ -1,0 +1,12 @@
+/.venv/
+/.idea/
+/data/shared/1C/
+/data/shared/AISBP-EK/
+/data/shared/EIS/
+/data/shared/SBIS/
+/data/shared/DB_ConnectLEtoARM.csv
+/data/shared/DB_InfoARM.csv
+/data/shared/InformLE.csv
+/logs/
+/test/
+/settings.py
