@@ -9,7 +9,7 @@ import subprocess
 import os
 import sys
 from contextlib import redirect_stderr
-from settings import MODULE_LOG_FILE
+from settings import MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,MODULE_LOG_FILE_ERROR
 from modules.main_functions import write_log
 
 
@@ -226,11 +226,14 @@ def show_popup_notification(title: str, message: str, urgency: str = "normal", t
         app.exec()
 
     except Exception as e:
-        write_log(f"Ошибка PyQt6-уведомления: {e}", MODULE_LOG_FILE)
+        write_log(f"Ошибка PyQt6-уведомления: {e}", MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,
+                  "critical",MODULE_LOG_FILE_ERROR)
         try:
             subprocess.run([
                 "notify-send", "-u", urgency, "-t", str(timeout_ms), title, message
             ], check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            write_log("Fallback: notify-send успешен.", MODULE_LOG_FILE)
+            write_log(f"Ошибка PyQt6-уведомления: {e}", MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                      "critical", MODULE_LOG_FILE_ERROR)
         except Exception as fe:
-            write_log(f"Fallback не сработал: {fe}", MODULE_LOG_FILE)
+            write_log(f"Ошибка PyQt6-уведомления: {e}", MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                      "critical", MODULE_LOG_FILE_ERROR)

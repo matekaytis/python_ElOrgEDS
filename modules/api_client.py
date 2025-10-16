@@ -10,6 +10,9 @@ import urllib3
 import yaml
 import os
 
+from modules.main_functions import write_log
+from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
+
 # Отключаем предупреждения SSL (ТОЛЬКО ДЛЯ САМОПОДПИСАННЫХ СЕРТИФИКАТОВ!)
 # В реальном продакшене НЕ ДЕЛАЙТЕ ЭТО! Используйте правильные сертификаты.
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -40,7 +43,9 @@ def get_shared_aes_key(api_url: str, api_token: str, verify_ssl: bool = False) -
         }
 
         # 3. Выполняем HTTPS GET-запрос
-        print(f"[api_client] Попытка подключения к API по адресу '{url}' для получения общего AES-ключа...")
+        print()
+        write_log(f"[api_client] Попытка подключения к API по адресу '{url}'"
+                  f" для получения общего AES-ключа...",MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
         response = requests.get(url, headers=headers, verify=verify_ssl, timeout=30)
 
         # 4. Проверяем статус ответа
@@ -59,46 +64,43 @@ def get_shared_aes_key(api_url: str, api_token: str, verify_ssl: bool = False) -
 
         # 8. Проверяем длину ключа
         if len(key_bytes) != 32:
-            raise RuntimeError(f"Decoded shared AES key is not 32 bytes long. Length: {len(key_bytes)} bytes.")
+            error_message = f"Decoded shared AES key is not 32 bytes long. Length: {len(key_bytes)} bytes."
+            write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                      "error", MODULE_LOG_FILE_ERROR)
+            raise RuntimeError(error_message)
 
-        print("[api_client] Общий AES-ключ (32 байта) успешно получен из API.")
+
+        write_log(f"[api_client] Общий AES-ключ (32 байта) успешно получен из API.",
+                  MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
         return key_bytes
 
     except requests.exceptions.SSLError as ssl_err:
-        raise RuntimeError(f"Ошибка SSL при подключении к API: {ssl_err}") from ssl_err
+        error_message = f"Ошибка SSL при подключении к API: {ssl_err}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from ssl_err
     except requests.exceptions.ConnectionError as conn_err:
-        raise RuntimeError(f"Ошибка подключения к API: {conn_err}") from conn_err
+        error_message = f"Ошибка подключения к API: {conn_err}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from conn_err
     except requests.exceptions.Timeout as timeout_err:
-        raise RuntimeError(f"Таймаут при подключении к API: {timeout_err}") from timeout_err
+        error_message = f"Таймаут при подключении к API: {timeout_err}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from timeout_err
     except requests.exceptions.RequestException as req_err:
-        raise RuntimeError(f"Ошибка запроса к API: {req_err}") from req_err
+        error_message = f"Ошибка запроса к API: {req_err}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from req_err
     except ValueError as ve: # Ошибка декодирования Base64
-        raise RuntimeError(f"Ошибка декодирования Base64 ключа из API: {ve}") from ve
+        error_message = f"Ошибка декодирования Base64 ключа из API: {ve}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from ve
     except Exception as e:
-        raise RuntimeError(f"Неожиданная ошибка в get_shared_aes_key: {e}") from e
-
-# --- ФУНКЦИЯ ЗАГРУЗКИ КОНФИГУРАЦИИ ---
-def load_config(config_path: str = "config/config.yaml") -> dict:
-    """
-    Загружает конфигурацию из YAML-файла.
-
-    Args:
-        config_path: Путь к файлу конфигурации.
-
-    Returns:
-        Словарь с конфигурацией.
-    """
-    try:
-        with open(config_path, 'r', encoding='utf-8') as f:
-            config = yaml.safe_load(f)
-        if not isinstance(config, dict):
-            raise ValueError("Файл конфигурации должен содержать словарь.")
-        print(f"[api_client] Конфигурация успешно загружена из '{config_path}'.")
-        return config
-    except FileNotFoundError:
-        raise RuntimeError(f"Файл конфигурации '{config_path}' не найден.")
-    except yaml.YAMLError as ye:
-        raise RuntimeError(f"Ошибка парсинга YAML в файле '{config_path}': {ye}") from ye
-    except Exception as e:
-        raise RuntimeError(f"Ошибка загрузки конфигурации из '{config_path}': {e}") from e
-# --- /ФУНКЦИЯ ЗАГРУЗКИ КОНФИГУРАЦИИ ---
+        error_message = f"Неожиданная ошибка в get_shared_aes_key: {e}"
+        write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+                  "error", MODULE_LOG_FILE_ERROR)
+        raise RuntimeError(error_message) from e

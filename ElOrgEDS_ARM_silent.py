@@ -9,49 +9,53 @@ import subprocess
 import sys
 
 from contextlib import redirect_stderr
-from settings import (SILENT_LOG_FILE, SCRIPT_DIR, DATA_DIR, SHARED_DIR,
-                      SHARED_NETWORK_PATH, LOGS_DIR, TEST_CBA, TEST_CSV, API_URL, API_TOKEN, MODULE_LOG_FILE)
+from settings import (SILENT_LOG_FILE_ALL, SILENT_LOG_FILE_LAST, SILENT_LOG_FILE_ERROR, SCRIPT_DIR, DATA_DIR,
+                      SHARED_DIR, SHARED_NETWORK_PATH, LOGS_DIR, TEST_CBA, TEST_CSV, API_URL, API_TOKEN,
+                      MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR, LOCK_FILE_SILENT)
 
 from modules import api_client, data_handler, cba_handler, exceptions
-from modules.main_functions import write_log, is_network_share_accessible
+from modules.main_functions import write_log, is_network_share_accessible, update_log, is_folder_not_empty, \
+    ensure_mounted, prevent_multiple_instances
+
 # Принудительно использовать X11 вместо Wayland
 if "WAYLAND_DISPLAY" in os.environ:
     os.environ["QT_QPA_PLATFORM"] = "xcb"
 from modules.notifications import show_popup_notification
 
-
 # --- /НАСТРОЙКИ ---
-TITLE_APP = "ElOrgEDS ARM - тихий режим"
+TITLE_APP = "'ElOrgEDS ARM - тихий режим'"
 
 # --- НАЧАЛО ЛОГИРОВАНИЯ ---
 # Очистка/создание лог-файла
-if os.path.exists(SILENT_LOG_FILE):
-    with open(SILENT_LOG_FILE, "w", encoding="utf-8") as f:
-        f.write("") # Очищаем файл
-else:
-    os.makedirs(os.path.dirname(SILENT_LOG_FILE), exist_ok=True)
-    with open(SILENT_LOG_FILE, "w", encoding="utf-8") as f:
-        pass # Создаем пустой файл
+update_log(SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST,SILENT_LOG_FILE_ERROR)
+update_log(MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,MODULE_LOG_FILE_ERROR)
 
-if not os.path.exists(MODULE_LOG_FILE):
-    os.makedirs(os.path.dirname(MODULE_LOG_FILE), exist_ok=True)
-    with open(MODULE_LOG_FILE, "w", encoding="utf-8") as f:
-        pass  # Создаем пустой файл
-
-write_log("==========================================",SILENT_LOG_FILE)
-write_log(f" {TITLE_APP} (Python/Linux)",SILENT_LOG_FILE)
-write_log("==========================================",SILENT_LOG_FILE)
-write_log(f"Путь к скрипту: {SCRIPT_DIR}",SILENT_LOG_FILE)
-write_log(f"Путь к данным: {DATA_DIR}",SILENT_LOG_FILE)
-write_log(f"Путь к полученным данным: {SHARED_DIR}",SILENT_LOG_FILE)
-write_log(f"Путь к общим данным: {SHARED_NETWORK_PATH}",SILENT_LOG_FILE)
-write_log(f"Путь к логам: {LOGS_DIR}",SILENT_LOG_FILE)
-write_log("------------------------------------------",SILENT_LOG_FILE)
+write_log("==========================================",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f" {TITLE_APP} (Python/Linux)",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log("==========================================",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+prevent_multiple_instances(LOCK_FILE_SILENT)
+write_log(f"Блокировка повторного запуска {TITLE_APP} успешно установлена",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f"Путь к скрипту: {SCRIPT_DIR}",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f"Путь к данным: {DATA_DIR}",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f"Путь к полученным данным: {SHARED_DIR}",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f"Путь к общим данным: {SHARED_NETWORK_PATH}",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log(f"Путь к логам: {LOGS_DIR}",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+write_log("------------------------------------------",
+          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 # --- /НАЧАЛО ЛОГИРОВАНИЯ ---
 
 
 
-# --- ГЛАВНАЯ ЛОГИКА SILENT MODE ---
+# --- ГЛАВНАЯ ЛОГИКА ElOrgEDS ARM - тихий режим ---
 def main():
     """Главная функция silent-режима."""
     try:
@@ -63,27 +67,38 @@ def main():
             "normal",
             15000
         )
-        # --- /УВЕДОМЛЕНИЕ ПОЛЬЗОВАТЕЛЮ ---
-        # 1. Загрузка конфигурации
-        write_log("Загрузка конфигурации...",SILENT_LOG_FILE)
-        # paths = config.get('paths', {}) # Можно использовать, если нужно
-        write_log(f"Путь к общей сетевой папке из конфига: {SHARED_NETWORK_PATH}",SILENT_LOG_FILE)
+        write_log(f"Путь к общей сетевой папке из конфига: {SHARED_NETWORK_PATH}",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
-        # 2. Получение общего AES-ключа из API
-        write_log("Получение общего AES-ключа из API...",SILENT_LOG_FILE)
+        # 1. Получение общего AES-ключа из API
+        write_log("Получение общего AES-ключа из API...",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
         shared_aes_key = api_client.get_shared_aes_key(API_URL, API_TOKEN, verify_ssl=False)
-        write_log(f"Общий AES-ключ успешно получен. Длина: {len(shared_aes_key)} байт.",SILENT_LOG_FILE)
+        write_log(f"Общий AES-ключ успешно получен. Длина: {len(shared_aes_key)} байт.",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
-        # 3. Основные действия программы (пример)
-        write_log("Начало основной логики silent mode...",SILENT_LOG_FILE)
-        write_log("------------------------------------------",SILENT_LOG_FILE)
+        # 2. Основные действия программы (пример)
+        write_log("Начало основной логики ElOrgEDS ARM - тихий режим...",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+        write_log("------------------------------------------",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+
+        ensure_mounted()
 
         # Убедитесь, что целевая папка существует
-        if is_network_share_accessible(SHARED_NETWORK_PATH, timeout=5.0):
-            pass
-        else:
-            raise exceptions.NetworkAccessError("Нет доступа к сетевой папке, проверьте доступ!")
-        write_log(f"Началось копирование данных в папку {SHARED_DIR}",SILENT_LOG_FILE)
+        if not is_network_share_accessible(SHARED_NETWORK_PATH, timeout=5.0):
+            error_message = "Нет доступа к сетевой папке, проверьте доступ!"
+            write_log(error_message,SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST,"error",SILENT_LOG_FILE_ERROR)
+            raise exceptions.NetworkAccessError(error_message)
+
+        # Убедитесь, что целевая папка не пустая
+        if not is_folder_not_empty(SHARED_NETWORK_PATH):
+            error_message = "Сетевая папка пустая!"
+            write_log(error_message, SILENT_LOG_FILE_ALL, SILENT_LOG_FILE_LAST, "error", SILENT_LOG_FILE_ERROR)
+            raise exceptions.NetworkAccessError(error_message)
+
+        write_log(f"Началось копирование данных в папку {SHARED_DIR}",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
         # Копируем всё содержимое SHARED_NETWORK_DIR в SHARED_DIR
         for item in os.listdir(SHARED_NETWORK_PATH):
@@ -93,7 +108,8 @@ def main():
                 shutil.copytree(s, d, dirs_exist_ok=True)  # dirs_exist_ok=True — для Python 3.8+
             else:
                 shutil.copy2(s, d)
-        write_log(f"Закончилось копирование данных в папку {SHARED_DIR}",SILENT_LOG_FILE)
+        write_log(f"Закончилось копирование данных в папку {SHARED_DIR}",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
         # Пример: Чтение и дешифрование DB_InfoARM.csv
         # db_info_arm_path = os.path.join(SHARED_DIR, "DB_InfoARM.csv")
@@ -126,10 +142,13 @@ def main():
         # else:
         #      write_log(f"Файл '{example_cba_path}' не найден. Пропущен.")
 
-        # --- /ОСНОВНАЯ ЛОГИКА SILENT MODE ---
-        write_log("------------------------------------------",SILENT_LOG_FILE)
-        write_log(f"{TITLE_APP} завершен.",SILENT_LOG_FILE)
-        write_log("==========================================",SILENT_LOG_FILE)
+        # --- /ОСНОВНАЯ ЛОГИКА ElOrgEDS ARM - тихий режим ---
+        write_log("------------------------------------------",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+        write_log(f"Выполнение {TITLE_APP} успешно завершено.",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+        write_log("==========================================",
+                  SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
         # --- УВЕДОМЛЕНИЕ ПОЛЬЗОВАТЕЛЮ ---
         final_message = "Программа завершена успешно."
@@ -143,7 +162,7 @@ def main():
 
     except Exception as e:
         error_message = f"КРИТИЧЕСКАЯ ОШИБКА: {e}"
-        write_log(error_message,SILENT_LOG_FILE)
+        write_log(error_message,SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST,"error",SILENT_LOG_FILE_ERROR)
         # В реальном приложении здесь можно отправить уведомление, записать в системный лог и т.д.
         show_popup_notification(
             TITLE_APP,
