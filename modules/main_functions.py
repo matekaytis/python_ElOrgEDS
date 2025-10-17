@@ -1,3 +1,4 @@
+import csv
 import fcntl
 import os
 import subprocess
@@ -95,6 +96,16 @@ def is_folder_not_empty(folder_path):
     return path.is_dir() and any(path.iterdir())
 # --- /ФУНКЦИЯ ПРОВЕРКИ ПАПКИ НА ПУСТОТУ ---
 
+# --- ФУНКЦИЯ ОЧИСТКИ ПАПКИ ---
+def clear_folder_files(folder_path):
+    folder = Path(folder_path)
+    if folder.exists():
+        for item in folder.iterdir():
+            if item.is_file():
+                item.unlink()  # удаляет файл
+
+# --- /ФУНКЦИЯ ОЧИСТКИ ПАПКИ ---
+
 # --- ФУНКЦИИ ДЛЯ МОНТИРОВАНИЯ СЕТЕВОЙ ПАПКИ ---
 def is_mounted(mount_point):
     """Проверяет, смонтирована ли точка."""
@@ -174,3 +185,32 @@ def prevent_multiple_instances(lock_file):
                   "error", MODULE_LOG_FILE_ERROR)
         sys.exit(1)
 # --- /ФУНКЦИЯ БЛОКИРОВКИ ПОВТОРНОГО ЗАПУСКА ---
+
+# --- ФУНКЦИЯ ПОЛУЧЕНИЯ ИНФОРМАЦИИ О ФАЙЛАХ ---
+def get_files_info(root_folder: str):
+    root = Path(root_folder)
+    files_info = []
+
+    for file_path in root.rglob('*'):  # рекурсивно
+        if file_path.is_file():
+            stat = file_path.stat()
+            files_info.append({
+                'path': str(file_path),
+                'name': file_path.name,
+                'size_bytes': stat.st_size,
+                'modified': datetime.fromtimestamp(stat.st_mtime).isoformat()
+            })
+    return files_info
+# --- /ФУНКЦИЯ ПОЛУЧЕНИЯ ИНФОРМАЦИИ О ФАЙЛАХ ---
+
+# --- ФУНКЦИЯ ВЫГРУЗКИ ИНФОРМАЦИИ О ФАЙЛАХ В ФАЙЛ---
+def save_to_csv(files_info, output_file: str):
+    with open(output_file, 'w', newline='', encoding='utf-8') as f:
+        if not files_info:
+            f.write("No files found.\n")
+            return
+        writer = csv.DictWriter(f, fieldnames=files_info[0].keys())
+        writer.writeheader()
+        writer.writerows(files_info)
+# --- /ФУНКЦИЯ ПОЛУЧЕНИЯ ИНФОРМАЦИИ О ФАЙЛАХ ---
+

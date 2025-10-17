@@ -30,7 +30,7 @@ class TimedNotification(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
         # Фиксированная ширина, динамическая высота
-        self.setFixedWidth(320)
+        self.setFixedWidth(330)
         self.setMinimumHeight(120)
         self.setMaximumHeight(400)
 
@@ -218,7 +218,7 @@ def show_popup_notification(title: str, message: str, urgency: str = "normal", t
             notification = TimedNotification(
                 title=title,
                 message=message,
-                timeout=timeout_sec,
+                timeout=300,
                 color_bg="#FFC0CB",
                 color_timer="#8B0000",
             )

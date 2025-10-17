@@ -9,13 +9,14 @@ import subprocess
 import sys
 
 from contextlib import redirect_stderr
+
 from settings import (SILENT_LOG_FILE_ALL, SILENT_LOG_FILE_LAST, SILENT_LOG_FILE_ERROR, SCRIPT_DIR, DATA_DIR,
                       SHARED_DIR, SHARED_NETWORK_PATH, LOGS_DIR, TEST_CBA, TEST_CSV, API_URL, API_TOKEN,
                       MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR, LOCK_FILE_SILENT)
 
 from modules import api_client, data_handler, cba_handler, exceptions
 from modules.main_functions import write_log, is_network_share_accessible, update_log, is_folder_not_empty, \
-    ensure_mounted, prevent_multiple_instances
+    ensure_mounted, prevent_multiple_instances, get_files_info, save_to_csv, clear_folder_files
 
 # Принудительно использовать X11 вместо Wayland
 if "WAYLAND_DISPLAY" in os.environ:
@@ -100,6 +101,9 @@ def main():
         write_log(f"Началось копирование данных в папку {SHARED_DIR}",
                   SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
 
+        # Очищаем всё содержимое в SHARED_DIR
+        clear_folder_files(SHARED_DIR)
+
         # Копируем всё содержимое SHARED_NETWORK_DIR в SHARED_DIR
         for item in os.listdir(SHARED_NETWORK_PATH):
             s = os.path.join(SHARED_NETWORK_PATH, item)
@@ -110,20 +114,28 @@ def main():
                 shutil.copy2(s, d)
         write_log(f"Закончилось копирование данных в папку {SHARED_DIR}",
                   SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+        info_files = get_files_info(SHARED_DIR)
+        output_csv = os.path.join(SCRIPT_DIR,"test","info_files.csv")
+        save_to_csv(info_files,output_csv)
+        write_log(f"Информация о {len(info_files)} файлах сохранена в {output_csv}",
+                  SILENT_LOG_FILE_ALL, SILENT_LOG_FILE_LAST)
 
         # Пример: Чтение и дешифрование DB_InfoARM.csv
-        # db_info_arm_path = os.path.join(SHARED_DIR, "DB_InfoARM.csv")
-        # if os.path.exists(db_info_arm_path):
-        #     write_log(f"Чтение и дешифрование '{db_info_arm_path}'...")
-        #     try:
-        #         df_arm = data_handler.read_encrypted_csv(db_info_arm_path, shared_aes_key)
-        #         df_arm.to_csv(TEST_CSV, index=False, encoding='utf-8')
-        #         write_log(f"Файл '{db_info_arm_path}' успешно прочитан и расшифрован. Количество записей: {len(df_arm)}")
-        #         # Здесь можно добавить логику обработки df_arm
-        #     except Exception as e:
-        #         write_log(f"Ошибка при чтении/дешифровании '{db_info_arm_path}': {e}")
-        # else:
-        #      write_log(f"Файл '{db_info_arm_path}' не найден. Пропущен.")
+        db_info_arm_path = os.path.join(SHARED_DIR, "DB_InfoARM.csv")
+        if os.path.exists(db_info_arm_path):
+            write_log(f"Чтение и дешифрование '{db_info_arm_path}'...")
+            try:
+                df_arm = data_handler.read_encrypted_csv(db_info_arm_path, shared_aes_key)
+                # Здесь можно добавить логику обработки df_arm
+                df_arm.to_csv(TEST_CSV, index=False, encoding='utf-8')
+                write_log(f"Файл '{db_info_arm_path}' успешно прочитан и расшифрован. "
+                          f"Количество записей: {len(df_arm)}",SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+            except Exception as e:
+                write_log(f"Ошибка при чтении/дешифровании '{db_info_arm_path}': {e}",SILENT_LOG_FILE_ALL,
+                          SILENT_LOG_FILE_LAST,"error",SILENT_LOG_FILE_ERROR)
+        else:
+             write_log(f"Файл '{db_info_arm_path}' не найден. Пропущен.",SILENT_LOG_FILE_ALL,
+                       SILENT_LOG_FILE_LAST,"error",SILENT_LOG_FILE_ERROR)
 
         # Пример: Чтение и дешифрование .cba файла
         # Предположим, у нас есть файл 2A5E7E091D5A403157DAAF996EF315DB.cba
