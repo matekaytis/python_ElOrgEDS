@@ -1,4 +1,4 @@
-# modules/crypto.py
+# ./modules/crypto.py
 """
 Модуль для шифрования/дешифрования данных с использованием AES-256-CBC (.NET Framework совместимый).
 Совместим с обновлёнными PowerShell-функциями func_EncryptText_NEW и func_DecryptText_NEW.

@@ -1,4 +1,4 @@
-# modules/notifications.py
+# ./modules/notifications.py
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QScrollArea, QFrame, QProgressBar

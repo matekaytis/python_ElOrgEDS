@@ -1,4 +1,4 @@
-# modules/api_client.py
+# ./modules/api_client.py
 """
 Модуль для работы с API сервера ElOrgEDS.
 Получает общий AES-ключ.

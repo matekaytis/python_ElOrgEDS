@@ -1,4 +1,4 @@
-# modules/data_handler.py
+# ./modules/data_handler.py
 """
 Модуль для работы с CSV-файлами.
 Чтение, запись, шифрование/дешифрование данных.
