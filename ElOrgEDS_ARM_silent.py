@@ -139,20 +139,23 @@ def main():
 
         # Пример: Чтение и дешифрование .cba файла
         # Предположим, у нас есть файл 2A5E7E091D5A403157DAAF996EF315DB.cba
-        # example_cba_filename = "2A5E7E091D5A403157DAAF996EF315DB.cba"
-        # example_cba_path = os.path.join(SHARED_DIR,"1C", example_cba_filename)
-        # if os.path.exists(example_cba_path):
-        #     write_log(f"Чтение и дешифрование '{example_cba_path}'...")
-        #     try:
-        #         pwd_from_cba = cba_handler.read_encrypted_cba(example_cba_path, shared_aes_key)
-        #         with open(TEST_CBA, 'w', encoding='utf-8') as f2:
-        #             f2.write(pwd_from_cba)
-        #         write_log(f"Пароль из '{example_cba_filename}' успешно прочитан и расшифрован.")
-        #         # Здесь можно использовать пароль, например, для распаковки .7z архива
-        #     except Exception as e:
-        #         write_log(f"Ошибка при чтении/дешифровании '{example_cba_path}': {e}")
-        # else:
-        #      write_log(f"Файл '{example_cba_path}' не найден. Пропущен.")
+        example_cba_filename = "2A5E7E091D5A403157DAAF996EF315DB.cba"
+        example_cba_path = os.path.join(SHARED_DIR,"1C", example_cba_filename)
+        if os.path.exists(example_cba_path):
+            write_log(f"Чтение и дешифрование '{example_cba_path}'...",
+                      SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+            try:
+                pwd_from_cba = cba_handler.read_encrypted_cba(example_cba_path, shared_aes_key)
+                with open(TEST_CBA, 'w', encoding='utf-8') as f:
+                    f.write(pwd_from_cba)
+                write_log(f"Пароль из '{example_cba_filename}' успешно прочитан и расшифрован.",
+                          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST)
+                # Здесь можно использовать пароль, например, для распаковки .7z архива
+            except Exception as e:
+                write_log(f"Ошибка при чтении/дешифровании '{example_cba_path}': {e}",
+                          SILENT_LOG_FILE_ALL,SILENT_LOG_FILE_LAST,"error",SILENT_LOG_FILE_ERROR)
+        else:
+             write_log(f"Файл '{example_cba_path}' не найден. Пропущен.")
 
         # --- /ОСНОВНАЯ ЛОГИКА ElOrgEDS ARM - тихий режим ---
         write_log("------------------------------------------",
