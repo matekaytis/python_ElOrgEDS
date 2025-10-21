@@ -115,7 +115,7 @@ def is_mounted(mount_point):
             mounts = f.read()
         return mount_point in mounts
     except Exception as e:
-        write_log(f"Ошибка при проверке монтирования: {e}",MODULE_LOG_FILE_ALL,
+        write_log(f"[main_functions] Ошибка при проверке монтирования: {e}",MODULE_LOG_FILE_ALL,
                   MODULE_LOG_FILE_LAST,"error",MODULE_LOG_FILE_ERROR)
         return False
 
@@ -129,15 +129,15 @@ def mount_share():
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
         if result.returncode == 0:
-            write_log(f"Папка '{SERVER_PATH}' успешно смонтирована на путь '{SHARED_NETWORK_PATH}'",
-                      MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
+            write_log(f"[main_functions] Папка '{SERVER_PATH}' успешно смонтирована на путь "
+                      f"'{SHARED_NETWORK_PATH}'",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
             return True
         else:
-            write_log(f"Ошибка монтирования: {result.stderr.strip()}", MODULE_LOG_FILE_ALL,
+            write_log(f"[main_functions] Ошибка монтирования: {result.stderr.strip()}", MODULE_LOG_FILE_ALL,
                       MODULE_LOG_FILE_LAST, "error", MODULE_LOG_FILE_ERROR)
             return False
     except Exception as e:
-        write_log(f"Исключение при монтировании: {e}", MODULE_LOG_FILE_ALL,
+        write_log(f"[main_functions] Исключение при монтировании: {e}", MODULE_LOG_FILE_ALL,
                   MODULE_LOG_FILE_LAST, "error", MODULE_LOG_FILE_ERROR)
         return False
 
@@ -145,24 +145,25 @@ def ensure_mounted(max_retries=10, delay=5):
     """Пытается гарантировать, что папка смонтирована."""
     for attempt in range(1, max_retries + 1):
         if is_mounted(SHARED_NETWORK_PATH):
-            write_log(f"Папка '{SERVER_PATH}' уже смонтирована на путь '{SHARED_NETWORK_PATH}'",
-                      MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
+            write_log(f"[main_functions] Папка '{SERVER_PATH}' уже смонтирована на путь "
+                      f"'{SHARED_NETWORK_PATH}'",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
             return True
 
-        write_log(f"Попытка {attempt}/{max_retries}: "
+        write_log(f"[main_functions] Попытка {attempt}/{max_retries}: "
                   f"монтируем папку '{SERVER_PATH}' на путь '{SHARED_NETWORK_PATH}'",
                   MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
         if mount_share():
             return True
 
         if attempt < max_retries:
-            write_log(f"Не удалось смонтировать папку '{SERVER_PATH}' на путь '{SHARED_NETWORK_PATH}'."
-                      f" Повтор через {delay} сек...", MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,
-                      "error", MODULE_LOG_FILE_ERROR)
+            write_log(f"[main_functions] Не удалось смонтировать папку '{SERVER_PATH}' на путь "
+                      f"'{SHARED_NETWORK_PATH}'. Повтор через {delay} сек...",MODULE_LOG_FILE_ALL,
+                      MODULE_LOG_FILE_LAST,"error",MODULE_LOG_FILE_ERROR)
             time.sleep(delay)
 
-    write_log(f"Не удалось смонтировать папку '{SERVER_PATH}' на путь '{SHARED_NETWORK_PATH}'"
-              f" после всех попыток.", MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST, "error", MODULE_LOG_FILE_ERROR)
+    write_log(f"[main_functions] Не удалось смонтировать папку '{SERVER_PATH}' на путь "
+              f"'{SHARED_NETWORK_PATH}' после всех попыток.",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,
+              "error", MODULE_LOG_FILE_ERROR)
     return False
 # --- /ФУНКЦИИ ДЛЯ МОНТИРОВАНИЯ СЕТЕВОЙ ПАПКИ ---
 
@@ -178,11 +179,11 @@ def prevent_multiple_instances(lock_file):
         # Записываем PID текущего процесса (опционально, для отладки)
         fp.write(str(os.getpid()))
         fp.flush()
-        write_log(f"Защита от повторного запуска установлена успешно",
+        write_log(f"[main_functions] Защита от повторного запуска установлена успешно",
                   MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
     except (IOError, OSError):
         # Блокировка не удалась — скрипт уже запущен
-        write_log(f"Блокировка не удалась — скрипт уже запущен", MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
+        write_log(f"[main_functions] Блокировка не удалась — скрипт уже запущен", MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         sys.exit(1)
 # --- /ФУНКЦИЯ БЛОКИРОВКИ ПОВТОРНОГО ЗАПУСКА ---

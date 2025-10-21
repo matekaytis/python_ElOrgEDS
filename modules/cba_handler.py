@@ -7,7 +7,7 @@
 import os
 
 from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
-from . import crypto # Импортируем модуль crypto из того же папки
+from . import crypto  # Импортируем модуль crypto из того же папки
 from .main_functions import write_log
 
 

@@ -6,31 +6,26 @@
 
 import os
 import shutil
+import socket
 import subprocess
-from sys import exception
+from typing import List
 
 import pandas as pd
-from pathlib import Path
-from typing import List, Dict, Any, Optional
-import ipaddress
-import socket
 
 import modules.exceptions
-# --- ИМПОРТ НАСТРОЕК ИЗ settings.py ---
-# Предполагается, что settings.py находится в корне проекта
-# и содержит переменные: SHARED_NETWORK_PATH, NAME_NET_INTERFACE, MASK_NET
-from settings import (SHARED_NETWORK_PATH, NAME_NET_INTERFACE, MASK_NET, SCRIPT_DIR, MODULE_LOG_FILE_ALL,
+from settings import (SHARED_NETWORK_PATH, NAME_NET_INTERFACE, MASK_NET, MODULE_LOG_FILE_ALL,
                       MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR, DATA_DIR, SHARED_DIR)
-# --- /ИМПОРТ НАСТРОЕК ---
-
-from . import crypto, data_handler # Импортируем модули из того же пакета
+from . import data_handler
 from .main_functions import write_log, is_network_share_accessible, clear_folder_files
 from .notifications import show_popup_notification
+
+# --- /ИМПОРТ НАСТРОЕК ---
 
 # --- НАСТРОЙКИ ---
 # Глобальные переменные для хранения результата
 global_ResultSynchServer: int = 0 # 1 = успех, 0 = неудача
 global_MyAccessApp: str = "" # AreaApp из DB_InfoARM.csv
+global_INNtoIP: list = [] # INN из DB_ConnectLEtoARM.csv
 
 # --- /НАСТРОЙКИ ---
 
@@ -58,7 +53,7 @@ def get_local_ip_address(name_net: str, mask_net: str) -> str:
 
         if not ip_addresses:
             # Альтернатива: используем socket.gethostbyname(socket.gethostname())
-            write_log("[server_sync] hostname -I не вернул адресов, пробуем socket.gethostbyname...",
+            write_log("[server_sync] hostname -i не вернул адресов, пробуем socket.gethostbyname...",
                       MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
             hostname = socket.gethostname()
             ip_addresses = [socket.gethostbyname(hostname)]
@@ -69,10 +64,6 @@ def get_local_ip_address(name_net: str, mask_net: str) -> str:
                   MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
 
         # 2. Фильтруем по имени интерфейса (если указано)
-        # На Linux это сложно сделать напрямую через hostname -I.
-        # name_net в Linux это имя интерфейса (eth0, wlan0 и т.д.)
-        # hostname -I не дает имя интерфейса.
-        # Можно использовать `ip addr show dev <name_net>` если name_net указан.
         if name_net:
             write_log(f"[server_sync] Фильтрация по имени интерфейса '{name_net}'...",
                       MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
@@ -190,12 +181,10 @@ def func_LoadingDataThisServer(aes_key: bytes):
     Args:
         aes_key: 32-байтовый общий AES-ключ.
     """
-    global global_ResultSynchServer, global_MyAccessApp
+    global global_ResultSynchServer, global_MyAccessApp, global_INNtoIP
 
     try:
         write_log("[server_sync] Начало синхронизации данных с сервером...",
-                  MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
-        write_log("------------------------------------------",
                   MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
 
         # 1. Загрузка конфигурации из settings.py (уже импортирована)
@@ -377,11 +366,86 @@ def func_LoadingDataThisServer(aes_key: bytes):
                     write_log(f"[server_sync]   -> Ошибка удаления папки '{area_to_delete}': {e}",
                               MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,"error",MODULE_LOG_FILE_ERROR)
 
-        # 11. Установка флага успеха
+        # 11. Чтение DB_ConnectLEtoARM.csv
+        db_connect_path = os.path.join(SHARED_DIR, "DB_ConnectLEtoARM.csv")
+        write_log(f"[server_sync] Чтение и дешифрование '{db_connect_path}'...",
+                  MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
+        if not os.path.exists(db_connect_path):
+            error_msg = f"Файл 'DB_ConnectLEtoARM.csv' не найден в общей сетевой папке '{SHARED_NETWORK_PATH}'."
+            write_log(f"[server_sync] {error_msg}",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,
+                      "error",MODULE_LOG_FILE_ERROR)
+            raise FileNotFoundError(error_msg)
+        try:
+            # Читаем CSV в DataFrame
+            df_conn_le_to_arm = pd.read_csv(db_connect_path, encoding='utf-8', skiprows=1)
+            write_log(f"[server_sync] Файл '{db_connect_path}' успешно прочитан."
+                      f" Количество записей: {len(df_conn_le_to_arm)}.", MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
+        except Exception as e:
+            error_msg = f"Ошибка чтения 'DB_ConnectLEtoARM.csv': {e}"
+            write_log(f"[server_sync] {error_msg}",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,
+                      "error",MODULE_LOG_FILE_ERROR)
+            raise RuntimeError(error_msg) from e
+
+        # 12. Фильтрация по IP-адресу
+        # Предполагаем, что в DataFrame есть колонка 'IPaddress'
+        sel_conn_le_to_arm = df_conn_le_to_arm[df_conn_le_to_arm['IPaddress'] == pc_ip] # Используем == для точного совпадения
+        if sel_conn_le_to_arm.empty:
+            error_msg = f"[server_sync] Для IP-адреса '{pc_ip}' не найдены записи в '{db_connect_path}'."
+            write_log(error_msg,MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,"error",MODULE_LOG_FILE_ERROR)
+            show_popup_notification(
+                "Ошибка синхронизации",
+                error_msg,
+                "critical",
+                0
+            )
+            # Удаляем папку shared
+            if os.path.exists(SHARED_DIR):
+                shutil.rmtree(SHARED_DIR)
+                write_log(f"[server_sync] Папка '{SHARED_DIR}' удалена из-за отсутствия доступа.",
+                          MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
+            global_ResultSynchServer = 0
+            return
+
+        write_log(f"[server_sync] Найдены записи для IP-адреса '{pc_ip}'. "
+                  f"Количество: {len(sel_conn_le_to_arm)}.",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
+
+        # 13. Извлечение INN из записей
+        # Получаем список всех столбцов, кроме 'IPaddress'
+        inn_columns = [col for col in sel_conn_le_to_arm.columns if col != 'IPaddress']
+        # Берем первую найденную строку (должна быть единственная)
+        matched_row = sel_conn_le_to_arm.iloc[0]
+        # Извлекаем список ИНН, к которым у этого IP есть доступ (где значение True)
+        global_INNtoIP = []
+        for col in inn_columns:
+            # Получаем значение из найденной строки для текущего столбца ИНН
+            access_flag = matched_row[col]
+            # Проверяем, является ли значение True (или "True" в строковом виде)
+            if str(access_flag).lower() in ['true', '1', 'yes']:
+                global_INNtoIP.append(col)  # Добавляем имя столбца (который является ИНН) в список
+        if len(global_INNtoIP) > 0:
+            write_log(f"[server_sync] Сформирован список учреждений с доступом. "
+                      f"Количество: {len(global_INNtoIP)}.",MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
+        else:
+            error_msg = (f"[server_sync] Для IP-адреса '{pc_ip}' не найдены доступы к учреждениям "
+                         f"в '{db_connect_path}'.")
+            write_log(error_msg, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, "error", MODULE_LOG_FILE_ERROR)
+            show_popup_notification(
+                "Ошибка синхронизации",
+                error_msg,
+                "critical",
+                0
+            )
+            # Удаляем папку shared
+            if os.path.exists(SHARED_DIR):
+                shutil.rmtree(SHARED_DIR)
+                write_log(f"[server_sync] Папка '{SHARED_DIR}' удалена из-за отсутствия доступа.",
+                          MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST)
+            global_ResultSynchServer = 0
+            return
+
+        # 14. Установка флага успеха
         global_ResultSynchServer = 1
         write_log("[server_sync] Синхронизация данных с сервером успешно завершена.",
-                  MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
-        write_log("------------------------------------------",
                   MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST)
 
     except Exception as e:

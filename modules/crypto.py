@@ -6,11 +6,8 @@
 
 import base64
 import os
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
-from cryptography.hazmat.backends import default_backend
 
-from modules.main_functions import write_log
+from .main_functions import write_log
 from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
 
 # --- НАСТРОЙКИ ---
@@ -55,7 +52,6 @@ def func_EncryptText_NEW(plaintext: str, key: bytes) -> str:
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
 
         # 3. Создаем шифратор
-        # ИСПРАВЛЕНО: .encryptor() вместо .create_encryptor()
         encryptor = cipher.encryptor()
 
         # 4. Добавляем PKCS7 padding
@@ -66,15 +62,10 @@ def func_EncryptText_NEW(plaintext: str, key: bytes) -> str:
         # 5. Шифруем
         ciphertext = encryptor.update(padded_plaintext_bytes) + encryptor.finalize()
 
-        # 6. Освобождаем ресурсы
-        # ИСПРАВЛЕНО: Убраны .dispose(), так как в Python это не требуется
-        # encryptor.dispose() # <-- УДАЛЕНО
-        # cipher.dispose()   # <-- УДАЛЕНО
-
-        # 7. Объединяем IV и Ciphertext
+        # 6. Объединяем IV и Ciphertext
         combined_bytes = iv + ciphertext
 
-        # 8. Кодируем в Base64
+        # 7. Кодируем в Base64
         encrypted_string = base64.b64encode(combined_bytes).decode('utf-8')
 
         return encrypted_string
@@ -128,23 +119,17 @@ def func_DecryptText_NEW(encrypted_b64: str, key: bytes) -> str:
         cipher = Cipher(algorithms.AES(key), modes.CBC(iv), backend=backend)
 
         # 6. Создаем дешифратор
-        # ИСПРАВЛЕНО: .decryptor() вместо .create_decryptor()
         decryptor = cipher.decryptor()
 
         # 7. Дешифруем
         padded_plaintext = decryptor.update(ciphertext) + decryptor.finalize()
 
-        # 8. Освобождаем ресурсы
-        # ИСПРАВЛЕНО: Убраны .dispose(), так как в Python это не требуется
-        # decryptor.dispose() # <-- УДАЛЕНО
-        # cipher.dispose()   # <-- УДАЛЕНО
-
-        # 9. Удаляем PKCS7 padding
+        # 8. Удаляем PKCS7 padding
         from cryptography.hazmat.primitives import padding
         unpadder = padding.PKCS7(128).unpadder() # 128 бит = 16 байт для AES
         plaintext_bytes = unpadder.update(padded_plaintext) + unpadder.finalize()
 
-        # 10. Преобразуем байты в строку UTF-8
+        # 9. Преобразуем байты в строку UTF-8
         decrypted_string = plaintext_bytes.decode('utf-8')
 
         return decrypted_string

@@ -4,13 +4,12 @@
 Получает общий AES-ключ.
 """
 
-import requests
 import base64
-import urllib3
-import yaml
-import os
 
-from modules.main_functions import write_log
+import requests
+import urllib3
+
+from .main_functions import write_log
 from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
 
 # Отключаем предупреждения SSL (ТОЛЬКО ДЛЯ САМОПОДПИСАННЫХ СЕРТИФИКАТОВ!)
@@ -57,14 +56,14 @@ def get_shared_aes_key(api_url: str, api_token: str, verify_ssl: bool = False) -
         # 6. Извлекаем Base64-строку ключа
         encrypted_key_b64 = data.get("shared_aes_key")
         if not encrypted_key_b64:
-            raise RuntimeError("API response did not contain a 'shared_aes_key'.")
+            raise RuntimeError("[api_client] API response did not contain a 'shared_aes_key'.")
 
         # 7. Декодируем Base64
         key_bytes = base64.b64decode(encrypted_key_b64)
 
         # 8. Проверяем длину ключа
         if len(key_bytes) != 32:
-            error_message = f"Decoded shared AES key is not 32 bytes long. Length: {len(key_bytes)} bytes."
+            error_message = f"[api_client] Decoded shared AES key is not 32 bytes long. Length: {len(key_bytes)} bytes."
             write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                       "error", MODULE_LOG_FILE_ERROR)
             raise RuntimeError(error_message)
@@ -75,32 +74,32 @@ def get_shared_aes_key(api_url: str, api_token: str, verify_ssl: bool = False) -
         return key_bytes
 
     except requests.exceptions.SSLError as ssl_err:
-        error_message = f"Ошибка SSL при подключении к API: {ssl_err}"
+        error_message = f"[api_client] Ошибка SSL при подключении к API: {ssl_err}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from ssl_err
     except requests.exceptions.ConnectionError as conn_err:
-        error_message = f"Ошибка подключения к API: {conn_err}"
+        error_message = f"[api_client] Ошибка подключения к API: {conn_err}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from conn_err
     except requests.exceptions.Timeout as timeout_err:
-        error_message = f"Таймаут при подключении к API: {timeout_err}"
+        error_message = f"[api_client] Таймаут при подключении к API: {timeout_err}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from timeout_err
     except requests.exceptions.RequestException as req_err:
-        error_message = f"Ошибка запроса к API: {req_err}"
+        error_message = f"[api_client] Ошибка запроса к API: {req_err}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from req_err
     except ValueError as ve: # Ошибка декодирования Base64
-        error_message = f"Ошибка декодирования Base64 ключа из API: {ve}"
+        error_message = f"[api_client] Ошибка декодирования Base64 ключа из API: {ve}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from ve
     except Exception as e:
-        error_message = f"Неожиданная ошибка в get_shared_aes_key: {e}"
+        error_message = f"[api_client] Неожиданная ошибка в get_shared_aes_key: {e}"
         write_log(error_message, MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST,
                   "error", MODULE_LOG_FILE_ERROR)
         raise RuntimeError(error_message) from e

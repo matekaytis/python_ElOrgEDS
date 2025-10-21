@@ -1,16 +1,18 @@
 # ./modules/notifications.py
+import os
+import subprocess
+import sys
+from contextlib import redirect_stderr
+
+from PyQt6.QtCore import QTimer, Qt
+from PyQt6.QtGui import QFont
 from PyQt6.QtWidgets import (
     QApplication, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QScrollArea, QFrame, QProgressBar
 )
-from PyQt6.QtCore import QTimer, Qt
-from PyQt6.QtGui import QFont
-import subprocess
-import os
-import sys
-from contextlib import redirect_stderr
-from settings import MODULE_LOG_FILE_ALL,MODULE_LOG_FILE_LAST,MODULE_LOG_FILE_ERROR
-from modules.main_functions import write_log
+
+from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
+from .main_functions import write_log
 
 
 class TimedNotification(QWidget):
@@ -30,7 +32,7 @@ class TimedNotification(QWidget):
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground, False)
 
         # Фиксированная ширина, динамическая высота
-        self.setFixedWidth(330)
+        self.setFixedWidth(350)
         self.setMinimumHeight(120)
         self.setMaximumHeight(400)
 

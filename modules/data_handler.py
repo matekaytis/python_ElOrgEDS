@@ -3,15 +3,15 @@
 Модуль для работы с CSV-файлами.
 Чтение, запись, шифрование/дешифрование данных.
 """
+import os
 import sys
 
 import pandas as pd
-import os
 
 from settings import MODULE_LOG_FILE_ALL, MODULE_LOG_FILE_LAST, MODULE_LOG_FILE_ERROR
-from modules import crypto # Импортируем модуль crypto из того же папки
-from modules.main_functions import write_log
-from modules.notifications import show_popup_notification
+from . import crypto  # Импортируем модуль crypto из того же папки
+from .main_functions import write_log
+from .notifications import show_popup_notification
 
 
 def read_encrypted_csv(file_path: str, aes_key: bytes) -> pd.DataFrame:
